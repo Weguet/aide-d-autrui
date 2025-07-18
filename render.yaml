@@ -15,3 +15,10 @@ services:
         generateValue: true
       - key: DB_CONNECTION
         value: sqlite
+
+services:
+    - type: web
+      name: aide-d-autrui
+      env: docker
+      plan: free
+      autoDeploy: true
