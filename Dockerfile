@@ -2,36 +2,23 @@ FROM php:8.2-apache
 
 # Installer dépendances système
 RUN apt-get update && apt-get install -y \
-    libonig-dev libzip-dev unzip zip git curl \
-    && docker-php-ext-install pdo pdo_mysql zip
+    git unzip curl libpng-dev libonig-dev libxml2-dev zip libpq-dev libzip-dev \
+    && docker-php-ext-install pdo pdo_pgsql pdo_mysql zip
 
-# Activer mod_rewrite
-RUN a2enmod rewrite
-
-# Copier les fichiers Laravel
-COPY . /var/www/html
-
-WORKDIR /var/www/html
-
-# Fixer les droits pour Laravel
-RUN mkdir -p storage bootstrap/cache \
-    && chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html
-
-# Copier Composer depuis l'image officielle
+# Installer Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Installer les dépendances Laravel
-RUN composer install --no-dev --optimize-autoloader
+# Copier les fichiers
+COPY . /var/www/html/
 
-# NE PAS faire de `php artisan key:generate` ici
-# Il faut le faire au runtime, quand l'app est prête
-
-# Changer Apache root vers public/
+# Assure-toi que public/ est bien utilisé comme racine
 RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 
-EXPOSE 80
+# Permissions
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
-CMD ["apache2-foreground"]
-
-
+# Build Laravel
+WORKDIR /var/www/html
+RUN composer install --no-dev --optimize-autoloader
+RUN php artisan config:cache
